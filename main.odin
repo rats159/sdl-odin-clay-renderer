@@ -11,11 +11,10 @@ import "vendor:sdl3/ttf"
 App_State :: struct {
 	window:       ^sdl.Window,
 	rendererData: Clay_SDL3RendererData,
-	// demoData: ClayVideoDemo_Data
 }
 
-windowWidth: i32 = 1024
-windowHeight: i32 = 768
+window_width: i32 = 1280
+window_height: i32 = 720
 
 syntaxImage: ^sdl.Surface
 checkImage1: ^sdl.Surface
@@ -111,7 +110,7 @@ LandingPageDesktop :: proc() {
 		layout = {
 			sizing = {
 				width = clay.SizingGrow(),
-				height = clay.SizingFit({min = cast(f32)windowHeight - 70}),
+				height = clay.SizingFit({min = f32(window_height) - 70}),
 			},
 			childAlignment = {y = .Center},
 			padding = {left = 50, right = 50},
@@ -220,7 +219,7 @@ LandingPageMobile :: proc() {
 			layoutDirection = .TopToBottom,
 			sizing = {
 				width = clay.SizingGrow(),
-				height = clay.SizingFit({min = cast(f32)windowHeight - 70}),
+				height = clay.SizingFit({min = f32(window_height) - 70}),
 			},
 			childAlignment = {x = .Center, y = .Center},
 			padding = {16, 16, 32, 32},
@@ -443,7 +442,7 @@ DeclarativeSyntaxPageDesktop :: proc() {
 	{
 		id = clay.ID("SyntaxPageDesktop"),
 		layout = {
-			sizing = {clay.SizingGrow(), clay.SizingFit({min = cast(f32)windowHeight - 50})},
+			sizing = {clay.SizingGrow(), clay.SizingFit({min = f32(window_height) - 50})},
 			childAlignment = {y = .Center},
 			padding = {left = 50, right = 50},
 		},
@@ -475,7 +474,7 @@ DeclarativeSyntaxPageMobile :: proc() {
 		id = clay.ID("SyntaxPageMobile"),
 		layout = {
 			layoutDirection = .TopToBottom,
-			sizing = {clay.SizingGrow(), clay.SizingFit({min = cast(f32)windowHeight - 50})},
+			sizing = {clay.SizingGrow(), clay.SizingFit({min = f32(window_height) - 50})},
 			childAlignment = {x = .Center, y = .Center},
 			padding = {16, 16, 32, 32},
 			childGap = 16,
@@ -584,7 +583,7 @@ HighPerformancePageDesktop :: proc(lerpValue: f64) {
 	{
 		id = clay.ID("PerformanceDesktop"),
 		layout = {
-			sizing = {clay.SizingGrow(), clay.SizingFit({min = cast(f32)windowHeight - 50})},
+			sizing = {clay.SizingGrow(), clay.SizingFit({min = f32(window_height) - 50})},
 			childAlignment = {y = .Center},
 			padding = {82, 82, 32, 32},
 			childGap = 64,
@@ -606,7 +605,7 @@ HighPerformancePageMobile :: proc(lerpValue: f64) {
 		id = clay.ID("PerformanceMobile"),
 		layout = {
 			layoutDirection = .TopToBottom,
-			sizing = {clay.SizingGrow(), clay.SizingFit({min = cast(f32)windowHeight - 50})},
+			sizing = {clay.SizingGrow(), clay.SizingFit({min = f32(window_height) - 50})},
 			childAlignment = {x = .Center, y = .Center},
 			padding = {16, 16, 32, 32},
 			childGap = 32,
@@ -702,7 +701,7 @@ RendererPageDesktop :: proc() {
 	{
 		id = clay.ID("RendererPageDesktop"),
 		layout = {
-			sizing = {clay.SizingGrow(), clay.SizingFit({min = cast(f32)windowHeight - 50})},
+			sizing = {clay.SizingGrow(), clay.SizingFit({min = f32(window_height) - 50})},
 			childAlignment = {y = .Center},
 			padding = {left = 50, right = 50},
 		},
@@ -734,7 +733,7 @@ RendererPageMobile :: proc() {
 		id = clay.ID("RendererMobile"),
 		layout = {
 			layoutDirection = .TopToBottom,
-			sizing = {clay.SizingGrow(), clay.SizingFit({min = cast(f32)windowHeight - 50})},
+			sizing = {clay.SizingGrow(), clay.SizingFit({min = f32(window_height) - 50})},
 			childAlignment = {x = .Center, y = .Center},
 			padding = {16, 16, 32, 32},
 			childGap = 32,
@@ -759,7 +758,7 @@ scrollbarData := ScrollbarData{}
 animationLerpValue := -1.0
 
 createLayout :: proc(lerpValue: f64) -> clay.ClayArray(clay.RenderCommand) {
-	mobileScreen := windowWidth < 750
+	mobileScreen := window_width < 750
 	clay.BeginLayout()
 
 	if clay.UI()(
@@ -906,7 +905,7 @@ SDL_MeasureText :: proc "c" (
 	userData: rawptr,
 ) -> clay.Dimensions {
 
-	fonts := ([^]^ttf.Font)(userData)
+	fonts := (^[dynamic]^ttf.Font)(userData)
 	font := fonts[config.fontId]
 	width, height: i32
 
@@ -918,14 +917,11 @@ SDL_MeasureText :: proc "c" (
 	return clay.Dimensions{f32(width), f32(height)}
 }
 
-loadFont :: proc(id: i32, size: f32, path: cstring, fonts: [^]^ttf.Font) {
+loadFont :: proc(id: i32, size: f32, path: cstring, fonts: ^[dynamic]^ttf.Font) {
 	font := ttf.OpenFont(path, size)
-	fonts[id] = font
+	assign_at(fonts, id, font)
 
 }
-
-// An array would be faster, but I'm lazy
-keys: map[sdl.Keycode]bool
 
 main :: proc() {
 	D_KEY := sdl.GetKeyFromName("D")
@@ -941,29 +937,28 @@ main :: proc() {
 
 	window: ^sdl.Window
 	renderer: ^sdl.Renderer
-	sdl.CreateWindowAndRenderer("SDL Clay Demo", 1280, 720, {.RESIZABLE}, &window, &renderer)
+	sdl.CreateWindowAndRenderer("SDL Clay Demo", window_width, window_height, {.RESIZABLE}, &window, &renderer)
 
 	state.window = window
 	state.rendererData.renderer = renderer
-	state.rendererData.fonts = make([^]^ttf.Font, 10)
 	state.rendererData.textEngine = ttf.CreateRendererTextEngine(renderer)
 
-	minMemorySize: c.size_t = cast(c.size_t)clay.MinMemorySize()
+	minMemorySize := uint(clay.MinMemorySize())
 	memory := make([^]u8, minMemorySize)
 	arena: clay.Arena = clay.CreateArenaWithCapacityAndMemory(minMemorySize, memory)
-	clay.Initialize(arena, {1280, 720}, {handler = errorHandler})
-	clay.SetMeasureTextFunction(SDL_MeasureText, state.rendererData.fonts)
+	clay.Initialize(arena, {f32(window_width), f32(window_height)}, {handler = errorHandler})
+	clay.SetMeasureTextFunction(SDL_MeasureText, &state.rendererData.fonts)
 
-	loadFont(FONT_ID_TITLE_56, 56, "resources/Calistoga-Regular.ttf", state.rendererData.fonts)
-	loadFont(FONT_ID_TITLE_52, 52, "resources/Calistoga-Regular.ttf", state.rendererData.fonts)
-	loadFont(FONT_ID_TITLE_48, 48, "resources/Calistoga-Regular.ttf", state.rendererData.fonts)
-	loadFont(FONT_ID_TITLE_36, 36, "resources/Calistoga-Regular.ttf", state.rendererData.fonts)
-	loadFont(FONT_ID_TITLE_32, 32, "resources/Calistoga-Regular.ttf", state.rendererData.fonts)
-	loadFont(FONT_ID_BODY_36, 36, "resources/Quicksand-Semibold.ttf", state.rendererData.fonts)
-	loadFont(FONT_ID_BODY_30, 30, "resources/Quicksand-Semibold.ttf", state.rendererData.fonts)
-	loadFont(FONT_ID_BODY_28, 28, "resources/Quicksand-Semibold.ttf", state.rendererData.fonts)
-	loadFont(FONT_ID_BODY_24, 24, "resources/Quicksand-Semibold.ttf", state.rendererData.fonts)
-	loadFont(FONT_ID_BODY_16, 16, "resources/Quicksand-Semibold.ttf", state.rendererData.fonts)
+	loadFont(FONT_ID_TITLE_56, 56, "resources/Calistoga-Regular.ttf", &state.rendererData.fonts)
+	loadFont(FONT_ID_TITLE_52, 52, "resources/Calistoga-Regular.ttf", &state.rendererData.fonts)
+	loadFont(FONT_ID_TITLE_48, 48, "resources/Calistoga-Regular.ttf", &state.rendererData.fonts)
+	loadFont(FONT_ID_TITLE_36, 36, "resources/Calistoga-Regular.ttf", &state.rendererData.fonts)
+	loadFont(FONT_ID_TITLE_32, 32, "resources/Calistoga-Regular.ttf", &state.rendererData.fonts)
+	loadFont(FONT_ID_BODY_36, 36, "resources/Quicksand-Semibold.ttf", &state.rendererData.fonts)
+	loadFont(FONT_ID_BODY_30, 30, "resources/Quicksand-Semibold.ttf", &state.rendererData.fonts)
+	loadFont(FONT_ID_BODY_28, 28, "resources/Quicksand-Semibold.ttf", &state.rendererData.fonts)
+	loadFont(FONT_ID_BODY_24, 24, "resources/Quicksand-Semibold.ttf", &state.rendererData.fonts)
+	loadFont(FONT_ID_BODY_16, 16, "resources/Quicksand-Semibold.ttf", &state.rendererData.fonts)
 
 
 	syntaxImage = image.Load("resources/declarative.png")
@@ -979,7 +974,7 @@ main :: proc() {
 	done := false
 
 	NOW := sdl.GetPerformanceCounter()
-	LAST := u64(0)
+	LAST: u64 = 0
 
 	for !done {
 		defer free_all(context.temp_allocator)
@@ -990,9 +985,10 @@ main :: proc() {
 			if (event.type == .QUIT) {
 				done = true
 			} else if event.type == .KEY_DOWN {
-				keys[event.key.key] = true
-			} else if event.type == .KEY_UP {
-				keys[event.key.key] = false
+				if event.key.key == D_KEY {
+					debugModeEnabled = !debugModeEnabled
+					clay.SetDebugModeEnabled(debugModeEnabled)
+				}
 			} else if event.type == .MOUSE_WHEEL {
 				scrollDelta.x = event.wheel.x
 				scrollDelta.y = event.wheel.y
@@ -1007,15 +1003,9 @@ main :: proc() {
 		if animationLerpValue > 1 {
 			animationLerpValue = animationLerpValue - 2
 		}
-		windowWidth: i32
-		windowHeight: i32
 
-		sdl.GetWindowSize(window, &windowWidth, &windowHeight)
+		sdl.GetWindowSize(window, &window_width, &window_height)
 
-		if (D_KEY in keys && keys[D_KEY]) {
-			debugModeEnabled = !debugModeEnabled
-			clay.SetDebugModeEnabled(debugModeEnabled)
-		}
 
 		mouseX: f32 = 0
 		mouseY: f32 = 0
@@ -1024,7 +1014,7 @@ main :: proc() {
 		clay.SetPointerState(mousePosition, .LEFT in mouseState)
 
 		clay.UpdateScrollContainers(false, scrollDelta, f32(deltaTime))
-		clay.SetLayoutDimensions({f32(windowWidth), f32(windowHeight)})
+		clay.SetLayoutDimensions({f32(window_width), f32(window_height)})
 		renderCommands: clay.ClayArray(clay.RenderCommand) = createLayout(
 			animationLerpValue < 0 ? (animationLerpValue + 1) : (1 - animationLerpValue),
 		)

@@ -8,7 +8,7 @@ import "vendor:sdl3/ttf"
 Clay_SDL3RendererData :: struct {
 	renderer:   ^sdl.Renderer,
 	textEngine: ^ttf.TextEngine,
-	fonts:      [^]^ttf.Font,
+	fonts:      [dynamic]^ttf.Font,
 }
 
 /* Global for convenience. Even in 4K this is enough for smooth curves (low radius or rect size coupled with
@@ -22,7 +22,7 @@ sdl_Clay_RenderFillRoundedRect :: proc(
 	cornerRadius: f32,
 	_color: clay.Color,
 ) {
-	color := sdl.FColor{_color.r / 255, _color.g / 255, _color.b / 255, _color.a / 255}
+	color := sdl.FColor(_color / 255)
 
 	indexCount: i32 = 0
 	vertexCount: i32 = 0
@@ -30,13 +30,13 @@ sdl_Clay_RenderFillRoundedRect :: proc(
 	minRadius := sdl.min(rect.w, rect.h) / 2
 	clampedRadius := sdl.min(cornerRadius, minRadius)
 
-	numCircleSegments := sdl.max(NUM_CIRCLE_SEGMENTS, (i32)((clampedRadius) * 0.5))
+	numCircleSegments := sdl.max(NUM_CIRCLE_SEGMENTS, i32(clampedRadius * 0.5))
 
 	totalVertices := 4 + (4 * (numCircleSegments * 2)) + 2 * 4
 	totalIndices := 6 + (4 * (numCircleSegments * 3)) + 6 * 4
 
 	// Maybe instrinsics.alloca these?
-	vertices := make([]sdl.Vertex, totalVertices, allocator = context.temp_allocator) //[totalVertices]sdl.Vertex;
+	vertices := make([]sdl.Vertex, totalVertices, allocator = context.temp_allocator)
 	indices := make([]i32, totalIndices, allocator = context.temp_allocator)
 
 	//define center rectangle
@@ -74,31 +74,35 @@ sdl_Clay_RenderFillRoundedRect :: proc(
 
 	//define rounded corners as triangle fans
 	step := (f32(math.PI) / 2) / f32(numCircleSegments)
-	for i: i32 = 0; i < numCircleSegments; i += 1 {
+	for i in 0 ..< numCircleSegments {
 		angle1 := f32(i) * step
 		angle2 := (f32(i) + 1) * step
 
-		for j: i32 = 0; j < 4; j += 1 { 	// Iterate over four corners
+		for j in i32(0) ..< 4 { 	// Iterate over four corners
 			cx, cy, signX, signY: f32
 
 			switch (j) {
 			case 0:
-				cx =
-					rect.x + clampedRadius;cy = rect.y + clampedRadius;signX = -1;signY = -1;break // Top-left
+				cx = rect.x + clampedRadius
+				cy = rect.y + clampedRadius
+				signX = -1
+				signY = -1
+			// Top-left
 			case 1:
-				cx =
-					rect.x +
-					rect.w -
-					clampedRadius;cy = rect.y + clampedRadius;signX = 1;signY = -1;break // Top-right
+				cx = rect.x + rect.w - clampedRadius
+				cy = rect.y + clampedRadius
+				signX = 1
+				signY = -1 // Top-right
 			case 2:
-				cx =
-					rect.x +
-					rect.w -
-					clampedRadius;cy = rect.y + rect.h - clampedRadius;signX = 1;signY = 1;break // Bottom-right
+				cx = rect.x + rect.w - clampedRadius
+				cy = rect.y + rect.h - clampedRadius
+				signX = 1
+				signY = 1 // Bottom-right
 			case 3:
-				cx =
-					rect.x +
-					clampedRadius;cy = rect.y + rect.h - clampedRadius;signX = -1;signY = 1;break // Bottom-left
+				cx = rect.x + clampedRadius
+				cy = rect.y + rect.h - clampedRadius
+				signX = -1
+				signY = 1 // Bottom-left
 			case:
 				return
 			}
@@ -237,16 +241,16 @@ sdl_Clay_RenderArc :: proc(
 	radStart := startAngle * (math.PI / 180.0)
 	radEnd := endAngle * (math.PI / 180.0)
 
-	numCircleSegments := sdl.max(NUM_CIRCLE_SEGMENTS, (i32)(radius * 1.5)) //increase circle segments for larger circles, 1.5 is arbitrary.
+	numCircleSegments := sdl.max(NUM_CIRCLE_SEGMENTS, i32(radius * 1.5)) //increase circle segments for larger circles, 1.5 is arbitrary.
 
-	angleStep := (radEnd - radStart) / (f32)(numCircleSegments)
+	angleStep := (radEnd - radStart) / f32(numCircleSegments)
 	thicknessStep: f32 = 0.4 //arbitrary value to avoid overlapping lines. Changing THICKNESS_STEP or numCircleSegments might cause artifacts.
 
 	for t := thicknessStep; t < thickness - thicknessStep; t += thicknessStep {
 		points := make([]sdl.FPoint, numCircleSegments + 1, allocator = context.temp_allocator)
 		clampedRadius := sdl.max(radius - t, 1)
 
-		for i: i32 = 0; i <= numCircleSegments; i += 1 {
+		for i in 0 ..= numCircleSegments {
 			angle := radStart + f32(i) * angleStep
 			points[i] = (sdl.FPoint) {
 				sdl.roundf(center.x + sdl.cosf(angle) * clampedRadius),
@@ -263,7 +267,7 @@ sdl_Clay_RenderClayCommands :: proc(
 	rendererData: ^Clay_SDL3RendererData,
 	rcommands: ^clay.ClayArray(clay.RenderCommand),
 ) {
-	for i: i32 = 0; i < rcommands.length; i += 1 {
+	for i in 0 ..< rcommands.length {
 		rcmd := clay.RenderCommandArray_Get(rcommands, i)
 		bounding_box := rcmd.boundingBox
 		rect := sdl.FRect{bounding_box.x, bounding_box.y, bounding_box.width, bounding_box.height}
@@ -335,7 +339,7 @@ sdl_Clay_RenderClayCommands :: proc(
 				sdl.RenderFillRect(rendererData.renderer, &line)
 			}
 			if (config.width.right > 0) {
-				starting_x := rect.x + rect.w - (f32)(config.width.right) + 1
+				starting_x := rect.x + rect.w - f32(config.width.right) + 1
 				starting_y := rect.y + clampedRadii.topRight
 				length := rect.h - clampedRadii.topRight - clampedRadii.bottomRight
 				line := sdl.FRect{starting_x, starting_y, f32(config.width.right), length}
@@ -349,7 +353,7 @@ sdl_Clay_RenderClayCommands :: proc(
 			}
 			if (config.width.bottom > 0) {
 				starting_x := rect.x + clampedRadii.bottomLeft
-				starting_y := rect.y + rect.h - (f32)(config.width.bottom) + 1
+				starting_y := rect.y + rect.h - f32(config.width.bottom) + 1
 				length := rect.w - clampedRadii.bottomLeft - clampedRadii.bottomRight
 				line := sdl.FRect{starting_x, starting_y, length, f32(config.width.bottom)}
 				sdl.SetRenderDrawColor(
