@@ -1,7 +1,7 @@
 package main
 
-import "base:runtime"
 import clay "./clay-odin"
+import "base:runtime"
 import "core:c"
 import "core:fmt"
 import sdl "vendor:sdl3"
@@ -905,8 +905,8 @@ SDL_MeasureText :: proc "c" (
 	config: ^clay.TextElementConfig,
 	userData: rawptr,
 ) -> clay.Dimensions {
-    
-    fonts := ([^]^ttf.Font)(userData)
+
+	fonts := ([^]^ttf.Font)(userData)
 	font := fonts[config.fontId]
 	width, height: i32
 
@@ -918,10 +918,10 @@ SDL_MeasureText :: proc "c" (
 	return clay.Dimensions{f32(width), f32(height)}
 }
 
-loadFont :: proc(id: i32, size: f32, path: cstring,fonts: [^]^ttf.Font) {
+loadFont :: proc(id: i32, size: f32, path: cstring, fonts: [^]^ttf.Font) {
 	font := ttf.OpenFont(path, size)
-    fonts[id] = font
-    
+	fonts[id] = font
+
 }
 
 // An array would be faster, but I'm lazy
@@ -937,16 +937,16 @@ main :: proc() {
 		fmt.panicf("Failed to initialize SDL TTF: %s", sdl.GetError())
 	}
 
-    state: App_State
-    
+	state: App_State
+
 	window: ^sdl.Window
 	renderer: ^sdl.Renderer
 	sdl.CreateWindowAndRenderer("SDL Clay Demo", 1280, 720, {.RESIZABLE}, &window, &renderer)
 
-    state.window = window
-    state.rendererData.renderer = renderer
-    state.rendererData.fonts = make([^]^ttf.Font, 10)
-    state.rendererData.textEngine = ttf.CreateRendererTextEngine(renderer)
+	state.window = window
+	state.rendererData.renderer = renderer
+	state.rendererData.fonts = make([^]^ttf.Font, 10)
+	state.rendererData.textEngine = ttf.CreateRendererTextEngine(renderer)
 
 	minMemorySize: c.size_t = cast(c.size_t)clay.MinMemorySize()
 	memory := make([^]u8, minMemorySize)
